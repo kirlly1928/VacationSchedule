@@ -1,0 +1,26 @@
+name: Sync Firebase Data to GitHub
+
+on:
+  schedule:
+    - cron: '0 * * * *' # выполняется каждый час
+  workflow_dispatch: # можно запустить вручную
+
+jobs:
+  sync-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Download Firebase data
+        run: |
+          mkdir -p data
+          curl 'https://vacation-d2585.firebaseio.com/vacations.json ' > data/vacations.json
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/vacations.json
+          git commit -m "Update vacations from Firebase $(date +'%Y-%m-%d %H:%M')"
+          git push
