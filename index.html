@@ -573,7 +573,9 @@
         // --- Удаление сотрудника и его отпусков ---
         // Удаляет сотрудника и все его отпуска из Firestore
         async function deleteEmployeeAndTheirVacations(employeeId, employeeName) {
-            const batch = db.batch(); // Инициализация батча для атомарных операций
+            // Инициализация батча для атомарных операций
+            // ИСПРАВЛЕНО: writeBatch(db) вместо db.batch()
+            const batch = writeBatch(db); 
 
             // 1. Удаляем сам документ сотрудника
             const employeeDocRef = doc(db, "officeEmployees", employeeId);
@@ -971,13 +973,15 @@
         // Модальное окно подтверждения удаления сотрудника
         closeEmployeeModalButton.onclick = () => confirmDeleteEmployeeModal.style.display = 'none';
         cancelDeleteEmployeeButton.onclick = () => confirmDeleteEmployeeModal.style.display = 'none';
-        confirmDeleteEmployeeButtonAction.onclick = async function() {
-            console.log('Confirm Delete Employee button clicked!'); // Отладочное сообщение
+
+        // Прикрепляем обработчик события 'click' с помощью addEventListener
+        confirmDeleteEmployeeButtonAction.addEventListener('click', async function() {
+            console.log('Confirm Delete Employee button clicked via addEventListener!'); // Отладочное сообщение
             if (employeeToDeleteId !== null) {
                 await deleteEmployeeAndTheirVacations(employeeToDeleteId, employeeToDeleteName);
                 confirmDeleteEmployeeModal.style.display = 'none';
             }
-        };
+        });
 
         // Закрытие модальных окон при клике вне их
         window.onclick = function(event) {
@@ -1088,6 +1092,8 @@
 
         // Инициализация приложения при полной загрузке DOM
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log('DOMContentLoaded fired.');
+            console.log('confirmDeleteEmployeeButtonAction element at DOMContentLoaded:', confirmDeleteEmployeeButtonAction); // Проверка элемента
             populateFilterOptions();
             const currentYear = new Date().getFullYear();
             filterYearInput.value = currentYear;
