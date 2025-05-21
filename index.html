@@ -26,6 +26,8 @@
         }
         .btn {
             transition: background-color 0.3s ease;
+            cursor: pointer; /* Убедимся, что курсор меняется на указатель */
+            pointer-events: auto; /* Убедимся, что клики регистрируются */
         }
         .btn-primary {
             background-color: #3b82f6; /* Синий */
@@ -67,6 +69,8 @@
             width: 80%;
             max-width: 500px;
             border-radius: 0.5rem;
+            position: relative; /* Для z-index */
+            z-index: 51; /* Выше, чем фон модального окна */
         }
         .close-button {
             color: #aaa;
@@ -212,6 +216,16 @@
 
             .day-of-month-cell {
                 font-size: 0.6rem; /* Уменьшаем шрифт для чисел дней */
+                writing-mode: vertical-lr; /* Числа вертикально */
+                text-orientation: mixed; /* Символы остаются вертикальными */
+                width: 20px; /* Уменьшаем ширину для вертикальных чисел */
+                height: auto; /* Высота подстраивается под содержимое */
+                padding: 0.1rem; /* Уменьшаем отступы */
+                border-right: none; /* Убираем вертикальный разделитель */
+                border-bottom: 1px dashed #d1d5db; /* Добавляем горизонтальный разделитель */
+            }
+            .day-of-month-cell:last-child {
+                border-bottom: none;
             }
 
             /* Для форм, чтобы они лучше выглядели на мобильных */
@@ -958,6 +972,7 @@
         closeEmployeeModalButton.onclick = () => confirmDeleteEmployeeModal.style.display = 'none';
         cancelDeleteEmployeeButton.onclick = () => confirmDeleteEmployeeModal.style.display = 'none';
         confirmDeleteEmployeeButtonAction.onclick = async function() {
+            console.log('Confirm Delete Employee button clicked!'); // Отладочное сообщение
             if (employeeToDeleteId !== null) {
                 await deleteEmployeeAndTheirVacations(employeeToDeleteId, employeeToDeleteName);
                 confirmDeleteEmployeeModal.style.display = 'none';
