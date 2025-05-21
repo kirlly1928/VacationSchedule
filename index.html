@@ -100,6 +100,7 @@
         }
         .employee-name-calendar {
             width: 150px; /* Фиксированная ширина для имени сотрудника */
+            min-width: 100px; /* Минимальная ширина для адаптивности */
             font-weight: 500;
             padding-right: 1rem;
             flex-shrink: 0; /* Предотвращает сжатие имени */
@@ -187,13 +188,13 @@
 
         <div class="mb-8 p-6 bg-gray-50 rounded-lg shadow">
             <h2 class="text-xl font-semibold text-gray-700 mb-4">Управление сотрудниками офиса</h2>
-            <form id="addOfficeEmployeeForm" class="flex gap-4 items-end mb-4">
-                <div class="flex-grow">
+            <form id="addOfficeEmployeeForm" class="flex flex-col sm:flex-row gap-4 items-end mb-4">
+                <div class="flex-grow w-full sm:w-auto">
                     <label for="newOfficeEmployeeName" class="block text-sm font-medium text-gray-700 mb-1">Имя нового сотрудника:</label>
                     <input type="text" id="newOfficeEmployeeName" name="newOfficeEmployeeName" required
                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
-                <button type="submit" class="btn btn-primary py-2 px-4 rounded-md shadow-sm">Добавить</button>
+                <button type="submit" class="btn btn-primary py-2 px-4 rounded-md shadow-sm w-full sm:w-auto">Добавить</button>
             </form>
             <p id="employeeFormError" class="text-red-500 text-sm mt-2"></p>
 
@@ -217,14 +218,14 @@
                         <option value="brigade">Бригада цеха</option>
                     </select>
                 </div>
-                <div id="officeEmployeeSelectContainer" style="display: none;">
+                <div id="officeEmployeeSelectContainer" class="w-full" style="display: none;">
                     <label for="officeEmployeeName" class="block text-sm font-medium text-gray-700 mb-1">Сотрудник офиса:</label>
                     <select id="officeEmployeeName" name="officeEmployeeName"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                         <option value="">Выберите сотрудника</option>
                     </select>
                 </div>
-                <div id="brigadeSelectContainer" style="display: none;">
+                <div id="brigadeSelectContainer" class="w-full" style="display: none;">
                     <label for="brigadeName" class="block text-sm font-medium text-gray-700 mb-1">Бригада цеха:</label>
                     <select id="brigadeName" name="brigadeName"
                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
@@ -249,7 +250,7 @@
                     <input type="date" id="vacationEnd" name="vacationEnd" required
                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
-                <div class="flex items-end">
+                <div class="flex items-end w-full">
                     <button type="submit" class="btn btn-primary w-full py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         Добавить отпуск
                     </button>
@@ -259,19 +260,19 @@
         </form>
 
         <div class="mb-6 flex flex-col sm:flex-row gap-4 items-center">
-            <div>
+            <div class="w-full sm:w-auto">
                 <label for="filterMonth" class="block text-sm font-medium text-gray-700 mb-1">Фильтр по месяцу:</label>
                 <select id="filterMonth" class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="">Все месяцы</option>
                     </select>
             </div>
-            <div>
+            <div class="w-full sm:w-auto">
                 <label for="filterYear" class="block text-sm font-medium text-gray-700 mb-1">Фильтр по году:</label>
                 <input type="number" id="filterYear" placeholder="Год (напр. 2024)"
                        class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
             </div>
-             <button id="applyFilters" class="btn btn-primary mt-3 sm:mt-0 sm:self-end py-2 px-4 rounded-md shadow-sm">Применить фильтры</button>
-             <button id="exportPdfButton" class="btn btn-success mt-3 sm:mt-0 sm:self-end py-2 px-4 rounded-md shadow-sm">Экспорт в PDF</button>
+             <button id="applyFilters" class="btn btn-primary mt-3 sm:mt-0 sm:self-end py-2 px-4 rounded-md shadow-sm w-full sm:w-auto">Применить фильтры</button>
+             <button id="exportPdfButton" class="btn btn-success mt-3 sm:mt-0 sm:self-end py-2 px-4 rounded-md shadow-sm w-full sm:w-auto">Экспорт в PDF</button>
         </div>
 
 
@@ -307,7 +308,7 @@
 
     <div id="confirmDeleteModal" class="modal">
         <div class="modal-content">
-            <span class="close-button" id="closeModalButton">×</span>
+            <span class="close-button" id="closeModalButton">&times;</span>
             <h2 class="text-lg font-semibold mb-4">Подтверждение удаления отпуска</h2>
             <p>Вы уверены, что хотите удалить этот отпуск?</p>
             <div class="mt-6 flex justify-end gap-3">
@@ -319,7 +320,7 @@
 
     <div id="confirmDeleteEmployeeModal" class="modal">
         <div class="modal-content">
-            <span class="close-button" id="closeEmployeeModalButton">×</span>
+            <span class="close-button" id="closeEmployeeModalButton">&times;</span>
             <h2 class="text-lg font-semibold mb-4">Подтверждение удаления сотрудника</h2>
             <p>Вы уверены, что хотите удалить сотрудника "<span id="employeeToDeleteName"></span>" и ВСЕ его отпуска?</p>
             <div class="mt-6 flex justify-end gap-3">
@@ -363,7 +364,7 @@
         const noCalendarResultsMessage = document.getElementById('noCalendarResultsMessage');
         const timelineView = document.getElementById('timelineView');
         const monthHeaderContainer = document.getElementById('monthHeaderContainer');
-        const daysOfMonthRow = document.getElementById('daysOfMonthRow'); // Новая строка для чисел месяца
+        const daysOfMonthRow = document.getElementById('daysOfMonthRow');
         const exportPdfButton = document.getElementById('exportPdfButton');
 
         // Элементы DOM - модальное окно отпуска
@@ -402,7 +403,6 @@
         const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
         function dateDiffInDays(date1, date2) {
-            // Переводим в UTC для корректного расчета дней без учета часового пояса
             const utc1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
             const utc2 = Date.UTC(date2.getFullYear(), date2.getMonth(), date2.getDate());
             return Math.floor((utc2 - utc1) / MS_PER_DAY) + 1;
@@ -500,7 +500,7 @@
 
         // --- Удаление сотрудника и его отпусков ---
         async function deleteEmployeeAndTheirVacations(employeeId, employeeName) {
-            const batch = writeBatch(db);
+            const batch = db.batch(); // Используем batch() вместо writeBatch(db)
 
             const employeeDocRef = doc(db, "officeEmployees", employeeId);
             batch.delete(employeeDocRef);
@@ -548,7 +548,6 @@
         // --- Функции для взаимодействия с Firestore (Отпуска) ---
         async function fetchVacations() {
             try {
-                // Сортировка по дате начала отпуска при загрузке
                 const q = query(vacationsCollection, orderBy("start"));
                 const querySnapshot = await getDocs(q);
                 vacations = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -564,36 +563,60 @@
         function checkOverlap(newName, newType, newStart, newEnd) {
             const newStartDate = new Date(newStart);
             const newEndDate = new Date(newEnd);
+            let hasStrictOverlap = false; // Пересечение с тем же сотрудником/бригадой (ошибка)
+            let hasGroupOverlap = false;  // Пересечение с другим сотрудником/бригадой в той же группе (предупреждение)
+            let overlappingGroupNames = [];
 
-            const overlaps = vacations.some(v => {
-                // Проверяем только отпуска того же типа и имени
-                if (v.name === newName && v.type === newType) {
-                    const existingStartDate = new Date(v.start);
-                    const existingEndDate = new Date(v.end);
+            vacations.forEach(v => {
+                const existingStartDate = new Date(v.start);
+                const existingEndDate = new Date(v.end);
 
-                    // Проверяем, пересекаются ли интервалы
-                    return (newStartDate <= existingEndDate && newEndDate >= existingStartDate);
+                // Проверяем, пересекаются ли интервалы
+                const isOverlap = (newStartDate <= existingEndDate && newEndDate >= existingStartDate);
+
+                if (isOverlap) {
+                    if (v.name === newName && v.type === newType) {
+                        hasStrictOverlap = true; // Отпуск для того же сотрудника/бригады
+                    } else if (v.type === newType) {
+                        hasGroupOverlap = true; // Отпуск для другого сотрудника/бригады в той же группе
+                        if (!overlappingGroupNames.includes(v.name)) {
+                            overlappingGroupNames.push(v.name);
+                        }
+                    }
                 }
-                return false;
             });
-            return overlaps;
+
+            return {
+                hasStrictOverlap,
+                hasGroupOverlap,
+                overlappingGroupNames
+            };
         }
 
 
         async function addVacationToFirestore(vacationData) {
             formError.textContent = ''; // Очищаем предыдущие ошибки
+            formError.classList.remove('text-red-500', 'text-orange-500'); // Очищаем цвета
 
             const { name, start, end, type } = vacationData;
 
-            // Проверка на пересечение дат перед добавлением
-            if (checkOverlap(name, type, start, end)) {
+            const overlapResult = checkOverlap(name, type, start, end);
+
+            if (overlapResult.hasStrictOverlap) {
                 formError.textContent = `У ${type === 'employee' ? 'сотрудника' : 'бригады'} "${name}" уже есть отпуск, пересекающийся с указанными датами.`;
-                return;
+                formError.classList.add('text-red-500');
+                return; // Блокируем добавление
             }
 
             try {
                 const docRef = await addDoc(vacationsCollection, vacationData);
                 console.log("Документ добавлен с ID: ", docRef.id);
+
+                if (overlapResult.hasGroupOverlap) {
+                    formError.textContent = `ВНИМАНИЕ: Отпуск пересекается с отпусками других ${type === 'employee' ? 'сотрудников' : 'бригад'} в этой группе: ${overlapResult.overlappingGroupNames.join(', ')}. Отпуск добавлен.`;
+                    formError.classList.add('text-orange-500'); // Выводим предупреждение
+                }
+
                 await fetchVacations();
                 form.reset();
                 entityTypeSelect.value = '';
@@ -602,6 +625,7 @@
             } catch (e) {
                 console.error("Ошибка при добавлении отпуска: ", e);
                 formError.textContent = "Ошибка при добавлении отпуска. Пожалуйста, попробуйте еще раз.";
+                formError.classList.add('text-red-500');
             }
         }
 
@@ -626,7 +650,7 @@
             }
 
             filteredVacations.forEach(vacation => {
-                const duration = dateDiffInDays(new Date(vacation.start), new Date(vacation.end)); // Передаем объекты Date
+                const duration = dateDiffInDays(new Date(vacation.start), new Date(vacation.end));
                 const row = `
                     <tr id="vacation-${vacation.id}">
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${vacation.name}</td>
@@ -646,8 +670,8 @@
         function renderCalendarView(filteredVacations) {
             timelineView.innerHTML = '';
             monthHeaderContainer.innerHTML = '';
-            daysOfMonthRow.innerHTML = ''; // Очищаем шкалу дней
-            daysOfMonthRow.style.display = 'none'; // Скрываем по умолчанию
+            daysOfMonthRow.innerHTML = '';
+            daysOfMonthRow.style.display = 'none';
 
             if (!filteredVacations || filteredVacations.length === 0) {
                 noCalendarResultsMessage.style.display = 'block';
@@ -658,27 +682,22 @@
             let minDate = new Date();
             let maxDate = new Date(minDate.getFullYear(), minDate.getMonth() + 2, 0);
 
-            // Определяем диапазон отображения на основе фильтров или данных
             const yearFilter = filterYearInput.value ? parseInt(filterYearInput.value) : null;
-            const monthFilter = filterMonthSelect.value !== "" ? parseInt(filterMonthSelect.value) : null; // Используем !== ""
+            const monthFilter = filterMonthSelect.value !== "" ? parseInt(filterMonthSelect.value) : null;
 
             if (yearFilter !== null && monthFilter !== null) {
-                // Если выбран конкретный месяц и год
                 minDate = new Date(yearFilter, monthFilter, 1);
-                maxDate = new Date(yearFilter, monthFilter + 1, 0); // Последний день месяца
-                daysOfMonthRow.style.display = 'flex'; // Показываем шкалу дней
+                maxDate = new Date(yearFilter, monthFilter + 1, 0);
+                daysOfMonthRow.style.display = 'flex';
             } else if (yearFilter !== null) {
-                // Если выбран только год
                 minDate = new Date(yearFilter, 0, 1);
                 maxDate = new Date(yearFilter, 11, 31);
             } else if (monthFilter !== null) {
-                 // Если выбран только месяц (для текущего года)
                  const currentYear = new Date().getFullYear();
                  minDate = new Date(currentYear, monthFilter, 1);
                  maxDate = new Date(currentYear, monthFilter + 1, 0);
-                 daysOfMonthRow.style.display = 'flex'; // Показываем шкалу дней
+                 daysOfMonthRow.style.display = 'flex';
             } else {
-                // Если фильтров нет, используем диапазон из данных или дефолтный
                 if (filteredVacations.length > 0) {
                      minDate = new Date(Math.min(...filteredVacations.map(v => new Date(v.start).getTime())));
                      maxDate = new Date(Math.max(...filteredVacations.map(v => new Date(v.end).getTime())));
@@ -695,7 +714,6 @@
 
             const dayWidthPercentage = 100 / totalDaysInRange;
 
-            // Рендер заголовков месяцев
             let currentMonthIterator = new Date(minDate);
             while (currentMonthIterator <= maxDate) {
                 const monthName = currentMonthIterator.toLocaleString('ru-RU', { month: 'long' });
@@ -721,12 +739,18 @@
                 currentMonthIterator.setDate(1);
             }
 
-            // Рендер шкалы дней, если выбран конкретный месяц
             if (daysOfMonthRow.style.display === 'flex') {
-                for (let i = 1; i <= maxDate.getDate(); i++) {
+                // Determine the actual start and end day for the days-of-month row
+                // This will be the start day of minDate and end day of maxDate if a single month is selected
+                let startDay = minDate.getDate();
+                let endDay = maxDate.getDate();
+                let daysInSelectedMonth = dateDiffInDays(minDate, maxDate);
+
+
+                for (let i = 0; i < daysInSelectedMonth; i++) {
                     const dayCell = document.createElement('div');
                     dayCell.classList.add('day-of-month-cell');
-                    dayCell.textContent = i;
+                    dayCell.textContent = startDay + i;
                     dayCell.style.width = `${dayWidthPercentage}%`;
                     daysOfMonthRow.appendChild(dayCell);
                 }
@@ -834,7 +858,6 @@
                 return;
             }
             
-            // Вызов функции addVacationToFirestore, которая теперь содержит проверку пересечений
             await addVacationToFirestore({ name, start, end, type: entityType });
         });
 
@@ -914,58 +937,63 @@
 
         applyFiltersButton.addEventListener('click', applyAllFilters);
 
-        exportPdfButton.addEventListener('click', () => {
-            const element = document.getElementById('content-to-export');
-            
-            // Клонируем элемент, чтобы применить стили для PDF
-            const clonedElement = element.cloneNode(true);
-            
-            // Удаляем элементы, которые не должны быть в PDF (например, формы управления)
-            clonedElement.querySelector('#addOfficeEmployeeForm').remove();
-            clonedElement.querySelector('#addVacationForm').remove();
-            clonedElement.querySelector('.mb-6.flex').remove(); // Блок фильтров и кнопки PDF
+        // Обработчик кнопки экспорта PDF, прикрепленный к window.onload
+        window.onload = function() {
+            exportPdfButton.addEventListener('click', () => {
+                const element = document.getElementById('content-to-export');
+                
+                // Клонируем элемент, чтобы применить стили для PDF
+                const clonedElement = element.cloneNode(true);
+                
+                // Удаляем элементы, которые не должны быть в PDF (например, формы управления)
+                const addOfficeEmployeeFormClone = clonedElement.querySelector('#addOfficeEmployeeForm');
+                if (addOfficeEmployeeFormClone) addOfficeEmployeeFormClone.remove();
 
-            // Удаляем колонку "Действия" из таблицы (если она есть)
-            const tableHeaders = clonedElement.querySelectorAll('#vacationList').length > 0 ? clonedElement.querySelector('#vacationList').parentNode.querySelectorAll('thead th') : [];
-            const actionHeaderIndex = Array.from(tableHeaders).findIndex(th => th.textContent.includes('Действия'));
-            if (actionHeaderIndex !== -1) {
-                tableHeaders[actionHeaderIndex].remove();
-                clonedElement.querySelectorAll('#vacationList tr').forEach(row => {
-                    if (row.children[actionHeaderIndex]) {
-                        row.children[actionHeaderIndex].remove();
-                    }
-                });
-            }
+                const addVacationFormClone = clonedElement.querySelector('#addVacationForm');
+                if (addVacationFormClone) addVacationFormClone.remove();
 
-            const options = {
-                margin: [0.5, 0.5, 0.5, 0.5], // top, left, bottom, right
-                filename: 'график_отпусков.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: {
-                    scale: 2,
-                    logging: true,
-                    useCORS: true // Важно, если есть внешние ресурсы
-                },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' } // Изменена ориентация на альбомную
-            };
+                const filterAndExportSection = clonedElement.querySelector('.mb-6.flex');
+                if (filterAndExportSection) filterAndExportSection.remove();
 
-            // Проверяем, что html2pdf доступен
-            if (typeof html2pdf !== 'undefined') {
-                html2pdf().set(options).from(clonedElement).save();
-            } else {
-                alert('Ошибка: Библиотека html2pdf не загружена. Проверьте подключение к интернету или CDN-ссылку.');
-                console.error('html2pdf is not defined');
-            }
-        });
+                // Удаляем колонку "Действия" из таблицы (если она есть)
+                const tableHeaders = clonedElement.querySelectorAll('#vacationList').length > 0 ? clonedElement.querySelector('#vacationList').parentNode.querySelectorAll('thead th') : [];
+                const actionHeaderIndex = Array.from(tableHeaders).findIndex(th => th.textContent.includes('Действия'));
+                if (actionHeaderIndex !== -1) {
+                    tableHeaders[actionHeaderIndex].remove();
+                    clonedElement.querySelectorAll('#vacationList tr').forEach(row => {
+                        if (row.children[actionHeaderIndex]) {
+                            row.children[actionHeaderIndex].remove();
+                        }
+                    });
+                }
 
+                const options = {
+                    margin: [0.5, 0.5, 0.5, 0.5], // top, left, bottom, right
+                    filename: 'график_отпусков.pdf',
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: {
+                        scale: 2,
+                        logging: true,
+                        useCORS: true
+                    },
+                    jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+                };
 
-        document.addEventListener('DOMContentLoaded', async () => {
+                if (window.html2pdf) {
+                    window.html2pdf().set(options).from(clonedElement).save();
+                } else {
+                    alert('Ошибка: Библиотека html2pdf не загружена. Проверьте подключение к интернету или CDN-ссылку.');
+                    console.error('html2pdf is not defined on window.onload');
+                }
+            });
+
+            // Инициализация при загрузке страницы
             populateFilterOptions();
             const currentYear = new Date().getFullYear();
             filterYearInput.value = currentYear;
-            await fetchOfficeEmployees();
-            await fetchVacations();
-        });
+            fetchOfficeEmployees();
+            fetchVacations();
+        };
 
     </script>
 </body>
