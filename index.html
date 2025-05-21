@@ -6,7 +6,7 @@
     <title>График отпусков сотрудников</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-HwWSFCgbt0wq69ZfHQfgcd9P3rkE6ofkStlYmpfyHWFXCjpmoH4/yQfZh7fibkdKJKYghRKebIpUoUIHRV0XPMCA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
 
     <style>
         body {
@@ -179,6 +179,54 @@
         #officeEmployeesList li:last-child {
             border-bottom: none;
         }
+
+        /* Адаптивность для мобильных устройств (портретная ориентация) */
+        @media (max-width: 767px) and (orientation: portrait) {
+            .employee-name-calendar {
+                width: 100px; /* Уменьшаем ширину для имен на мобильных */
+                min-width: 80px;
+                padding-right: 0.25rem;
+            }
+
+            .month-header-container,
+            .days-of-month-row {
+                padding-left: 108px; /* 100px (employee-name) + 0.5rem (8px) */
+            }
+
+            .month-header {
+                writing-mode: vertical-lr; /* Текст вертикально */
+                text-orientation: mixed; /* Символы остаются вертикальными */
+                width: 30px; /* Фиксированная ширина для вертикального заголовка */
+                height: auto; /* Высота подстраивается под содержимое */
+                padding: 0.25rem 0.1rem; /* Уменьшаем отступы */
+                font-size: 0.65rem; /* Уменьшаем шрифт */
+                border-right: none; /* Убираем вертикальный разделитель */
+                border-bottom: 1px solid #d1d5db; /* Добавляем горизонтальный разделитель */
+            }
+            .month-header:last-child {
+                border-bottom: none;
+            }
+            .month-header:first-child {
+                border-left: none; /* Убираем левый разделитель, если он есть */
+            }
+
+            .day-of-month-cell {
+                font-size: 0.6rem; /* Уменьшаем шрифт для чисел дней */
+            }
+
+            /* Для форм, чтобы они лучше выглядели на мобильных */
+            .grid.grid-cols-1.md\:grid-cols-2.lg\:grid-cols-4 {
+                grid-template-columns: 1fr; /* Одна колонка на мобильных */
+            }
+            .flex.flex-col.sm\:flex-row.gap-4.items-end.mb-4,
+            .flex.flex-col.sm\:flex-row.gap-4.items-center {
+                flex-direction: column; /* Элементы в колонку */
+                align-items: stretch; /* Растягиваем элементы */
+            }
+            .w-full.sm\:w-auto {
+                width: 100%; /* Элементы занимают всю ширину */
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -272,7 +320,7 @@
                        class="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
             </div>
              <button id="applyFilters" class="btn btn-primary mt-3 sm:mt-0 sm:self-end py-2 px-4 rounded-md shadow-sm w-full sm:w-auto">Применить фильтры</button>
-             <button id="exportPdfButton" class="btn btn-success mt-3 sm:mt-0 sm:self-end py-2 px-4 rounded-md shadow-sm w-full sm:w-auto">Экспорт в PDF</button>
+             <button id="exportXlsButton" class="btn btn-success mt-3 sm:mt-0 sm:self-end py-2 px-4 rounded-md shadow-sm w-full sm:w-auto">Экспорт в XLS</button>
         </div>
 
 
@@ -350,11 +398,11 @@
         const vacationsCollection = collection(db, "vacations");
         const officeEmployeesCollection = collection(db, "officeEmployees");
 
-        let vacations = [];
-        let officeEmployees = [];
-        let vacationToDeleteId = null;
-        let employeeToDeleteId = null;
-        let employeeToDeleteName = '';
+        let vacations = []; // Все отпуска, загруженные из Firestore
+        let officeEmployees = []; // Все сотрудники офиса, загруженные из Firestore
+        let vacationToDeleteId = null; // ID отпуска для удаления
+        let employeeToDeleteId = null; // ID сотрудника для удаления
+        let employeeToDeleteName = ''; // Имя сотрудника для отображения в модальном окне
 
         // Элементы DOM - общие
         const form = document.getElementById('addVacationForm');
@@ -365,7 +413,7 @@
         const timelineView = document.getElementById('timelineView');
         const monthHeaderContainer = document.getElementById('monthHeaderContainer');
         const daysOfMonthRow = document.getElementById('daysOfMonthRow');
-        const exportPdfButton = document.getElementById('exportPdfButton');
+        const exportXlsButton = document.getElementById('exportXlsButton'); // Кнопка экспорта в XLS
 
         // Элементы DOM - модальное окно отпуска
         const confirmDeleteModal = document.getElementById('confirmDeleteModal');
@@ -400,27 +448,32 @@
         const filterYearInput = document.getElementById('filterYear');
         const applyFiltersButton = document.getElementById('applyFilters');
 
-        const MS_PER_DAY = 1000 * 60 * 60 * 24;
+        const MS_PER_DAY = 1000 * 60 * 60 * 24; // Миллисекунд в дне
 
+        // Вспомогательная функция для расчета разницы в днях
         function dateDiffInDays(date1, date2) {
+            // Переводим в UTC для корректного расчета дней без учета часового пояса
             const utc1 = Date.UTC(date1.getFullYear(), date1.getMonth(), date1.getDate());
             const utc2 = Date.UTC(date2.getFullYear(), date2.getMonth(), date2.getDate());
-            return Math.floor((utc2 - utc1) / MS_PER_DAY) + 1;
+            return Math.floor((utc2 - utc1) / MS_PER_DAY) + 1; // +1 чтобы включить оба дня
         }
 
+        // Вспомогательная функция для форматирования даты (дд.мм.гггг)
         function formatDate(dateStr) {
             if (!dateStr) return '';
             const date = new Date(dateStr);
-            if (isNaN(date.getTime())) {
+            if (isNaN(date.getTime())) { // Проверка на валидность даты
                 return dateStr;
             }
             const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0'); // Месяцы начинаются с 0
             const year = date.getFullYear();
             return `${day}.${month}.${year}`;
         }
 
         // --- ГЛОБАЛЬНЫЕ ФУНКЦИИ для ONCLICK в HTML ---
+        // Эти функции должны быть в глобальной области видимости (window)
+        // чтобы onclick в HTML мог их найти.
         window.openDeleteModal = function(id) {
             vacationToDeleteId = id;
             confirmDeleteModal.style.display = 'block';
@@ -435,17 +488,19 @@
 
 
         // --- Функции для сотрудников офиса ---
+        // Загружает список сотрудников офиса из Firestore
         async function fetchOfficeEmployees() {
             try {
                 const querySnapshot = await getDocs(query(officeEmployeesCollection, orderBy('name')));
                 officeEmployees = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                populateOfficeEmployeeSelect();
-                renderOfficeEmployeesList();
+                populateOfficeEmployeeSelect(); // Обновляет выпадающий список
+                renderOfficeEmployeesList(); // Обновляет список для управления
             } catch (e) {
                 console.error("Ошибка при загрузке сотрудников офиса: ", e);
             }
         }
 
+        // Заполняет выпадающий список сотрудников офиса
         function populateOfficeEmployeeSelect() {
             officeEmployeeNameSelect.innerHTML = '<option value="">Выберите сотрудника</option>';
             officeEmployees.forEach(emp => {
@@ -456,6 +511,7 @@
             });
         }
 
+        // Рендерит список сотрудников офиса с кнопками удаления
         function renderOfficeEmployeesList() {
             officeEmployeesList.innerHTML = '';
             if (officeEmployees.length === 0) {
@@ -473,9 +529,10 @@
             }
         }
 
+        // Обработчик формы добавления нового сотрудника офиса
         addOfficeEmployeeForm.addEventListener('submit', async function(event) {
             event.preventDefault();
-            employeeFormError.textContent = '';
+            employeeFormError.textContent = ''; // Очищаем ошибки
             const newEmployeeName = newOfficeEmployeeNameInput.value.trim();
 
             if (!newEmployeeName) {
@@ -483,6 +540,7 @@
                 return;
             }
 
+            // Проверка на дубликаты
             if (officeEmployees.some(emp => emp.name === newEmployeeName)) {
                 employeeFormError.textContent = `Сотрудник "${newEmployeeName}" уже существует.`;
                 return;
@@ -490,8 +548,8 @@
 
             try {
                 await addDoc(officeEmployeesCollection, { name: newEmployeeName });
-                newOfficeEmployeeNameInput.value = '';
-                await fetchOfficeEmployees();
+                newOfficeEmployeeNameInput.value = ''; // Очищаем поле ввода
+                await fetchOfficeEmployees(); // Обновляем список сотрудников
             } catch (e) {
                 console.error("Ошибка при добавлении сотрудника: ", e);
                 employeeFormError.textContent = "Ошибка при добавлении сотрудника. Пожалуйста, попробуйте еще раз.";
@@ -499,12 +557,15 @@
         });
 
         // --- Удаление сотрудника и его отпусков ---
+        // Удаляет сотрудника и все его отпуска из Firestore
         async function deleteEmployeeAndTheirVacations(employeeId, employeeName) {
-            const batch = db.batch(); // Используем batch() вместо writeBatch(db)
+            const batch = db.batch(); // Инициализация батча для атомарных операций
 
+            // 1. Удаляем сам документ сотрудника
             const employeeDocRef = doc(db, "officeEmployees", employeeId);
             batch.delete(employeeDocRef);
 
+            // 2. Находим все отпуска этого сотрудника и добавляем их в батч для удаления
             const q = query(vacationsCollection, where("name", "==", employeeName), where("type", "==", "employee"));
             const vacationsSnapshot = await getDocs(q);
 
@@ -513,10 +574,10 @@
             });
 
             try {
-                await batch.commit();
+                await batch.commit(); // Выполняем все операции в батче
                 console.log(`Сотрудник ${employeeName} и все его отпуска успешно удалены.`);
-                await fetchOfficeEmployees();
-                await fetchVacations();
+                await fetchOfficeEmployees(); // Обновляем список сотрудников
+                await fetchVacations(); // Обновляем список отпусков
             } catch (e) {
                 console.error("Ошибка при удалении сотрудника и его отпусков: ", e);
                 alert("Ошибка при удалении сотрудника и его отпусков. Пожалуйста, попробуйте еще раз.");
@@ -524,19 +585,20 @@
         }
 
 
-        // --- Логика переключения полей выбора ---
+        // --- Логика переключения полей выбора (Сотрудник/Бригада) ---
         entityTypeSelect.addEventListener('change', function() {
             if (this.value === 'employee') {
                 officeEmployeeSelectContainer.style.display = 'block';
                 brigadeSelectContainer.style.display = 'none';
-                officeEmployeeNameSelect.setAttribute('required', 'required');
-                brigadeNameSelect.removeAttribute('required');
+                officeEmployeeNameSelect.setAttribute('required', 'required'); // Делаем поле обязательным
+                brigadeNameSelect.removeAttribute('required'); // Убираем обязательность
             } else if (this.value === 'brigade') {
                 officeEmployeeSelectContainer.style.display = 'none';
                 brigadeSelectContainer.style.display = 'block';
                 brigadeNameSelect.setAttribute('required', 'required');
                 officeEmployeeNameSelect.removeAttribute('required');
             } else {
+                // Если ничего не выбрано
                 officeEmployeeSelectContainer.style.display = 'none';
                 brigadeSelectContainer.style.display = 'none';
                 officeEmployeeNameSelect.removeAttribute('required');
@@ -546,12 +608,14 @@
 
 
         // --- Функции для взаимодействия с Firestore (Отпуска) ---
+        // Загружает все отпуска из Firestore и сортирует их по дате начала
         async function fetchVacations() {
             try {
+                // Запрос с сортировкой по дате начала отпуска
                 const q = query(vacationsCollection, orderBy("start"));
                 const querySnapshot = await getDocs(q);
                 vacations = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                applyAllFilters();
+                applyAllFilters(); // Применяем фильтры после загрузки всех данных
             }
             catch (e) {
                 console.error("Ошибка при загрузке отпусков из Firestore: ", e);
@@ -563,9 +627,9 @@
         function checkOverlap(newName, newType, newStart, newEnd) {
             const newStartDate = new Date(newStart);
             const newEndDate = new Date(newEnd);
-            let hasStrictOverlap = false; // Пересечение с тем же сотрудником/бригадой (ошибка)
-            let hasGroupOverlap = false;  // Пересечение с другим сотрудником/бригадой в той же группе (предупреждение)
-            let overlappingGroupNames = [];
+            let hasStrictOverlap = false; // Пересечение с ТЕМ ЖЕ сотрудником/бригадой (ошибка)
+            let hasGroupOverlap = false;  // Пересечение с ДРУГИМ сотрудником/бригадой в ТОЙ ЖЕ группе (предупреждение)
+            let overlappingGroupNames = []; // Имена тех, с кем есть пересечение в группе
 
             vacations.forEach(v => {
                 const existingStartDate = new Date(v.start);
@@ -576,9 +640,11 @@
 
                 if (isOverlap) {
                     if (v.name === newName && v.type === newType) {
-                        hasStrictOverlap = true; // Отпуск для того же сотрудника/бригады
-                    } else if (v.type === newType) {
-                        hasGroupOverlap = true; // Отпуск для другого сотрудника/бригады в той же группе
+                        // Отпуск для того же сотрудника/бригады на пересекающиеся даты
+                        hasStrictOverlap = true;
+                    } else if (v.type === newType && v.name !== newName) {
+                        // Отпуск для другого сотрудника/бригады того же типа на пересекающиеся даты
+                        hasGroupOverlap = true;
                         if (!overlappingGroupNames.includes(v.name)) {
                             overlappingGroupNames.push(v.name);
                         }
@@ -593,10 +659,10 @@
             };
         }
 
-
+        // Добавляет новый отпуск в Firestore после проверки на пересечения
         async function addVacationToFirestore(vacationData) {
             formError.textContent = ''; // Очищаем предыдущие ошибки
-            formError.classList.remove('text-red-500', 'text-orange-500'); // Очищаем цвета
+            formError.classList.remove('text-red-500', 'text-orange-500'); // Очищаем цвета ошибок
 
             const { name, start, end, type } = vacationData;
 
@@ -605,7 +671,7 @@
             if (overlapResult.hasStrictOverlap) {
                 formError.textContent = `У ${type === 'employee' ? 'сотрудника' : 'бригады'} "${name}" уже есть отпуск, пересекающийся с указанными датами.`;
                 formError.classList.add('text-red-500');
-                return; // Блокируем добавление
+                return; // Блокируем добавление, если есть строгое совпадение
             }
 
             try {
@@ -614,12 +680,12 @@
 
                 if (overlapResult.hasGroupOverlap) {
                     formError.textContent = `ВНИМАНИЕ: Отпуск пересекается с отпусками других ${type === 'employee' ? 'сотрудников' : 'бригад'} в этой группе: ${overlapResult.overlappingGroupNames.join(', ')}. Отпуск добавлен.`;
-                    formError.classList.add('text-orange-500'); // Выводим предупреждение
+                    formError.classList.add('text-orange-500'); // Выводим предупреждение о пересечении в группе
                 }
 
-                await fetchVacations();
-                form.reset();
-                entityTypeSelect.value = '';
+                await fetchVacations(); // Перезагружаем данные и обновляем отображение
+                form.reset(); // Сбрасываем форму
+                entityTypeSelect.value = ''; // Сбрасываем селектор типа
                 officeEmployeeSelectContainer.style.display = 'none';
                 brigadeSelectContainer.style.display = 'none';
             } catch (e) {
@@ -629,11 +695,12 @@
             }
         }
 
+        // Удаляет отпуск из Firestore по ID
         async function deleteVacationFromFirestore(id) {
             try {
                 await deleteDoc(doc(db, "vacations", id));
                 console.log("Документ успешно удален!");
-                await fetchVacations();
+                await fetchVacations(); // Перезагружаем данные и обновляем отображение
             } catch (e) {
                 console.error("Ошибка при удалении отпуска: ", e);
                 formError.textContent = "Ошибка при удалении отпуска. Пожалуйста, попробуйте еще раз.";
@@ -641,10 +708,11 @@
         }
 
         // --- Рендеринг и фильтрация ---
+        // Рендерит отпуска в таблице
         function renderVacations(filteredVacations) {
-            vacationList.innerHTML = '';
+            vacationList.innerHTML = ''; // Очищаем таблицу
             if (!filteredVacations || filteredVacations.length === 0) {
-                noResultsMessage.style.display = 'block';
+                noResultsMessage.style.display = 'block'; // Показываем сообщение, если нет данных
             } else {
                 noResultsMessage.style.display = 'none';
             }
@@ -667,11 +735,12 @@
             });
         }
 
+        // Рендерит отпуска в календарном представлении
         function renderCalendarView(filteredVacations) {
             timelineView.innerHTML = '';
             monthHeaderContainer.innerHTML = '';
             daysOfMonthRow.innerHTML = '';
-            daysOfMonthRow.style.display = 'none';
+            daysOfMonthRow.style.display = 'none'; // Скрываем шкалу дней по умолчанию
 
             if (!filteredVacations || filteredVacations.length === 0) {
                 noCalendarResultsMessage.style.display = 'block';
@@ -685,19 +754,24 @@
             const yearFilter = filterYearInput.value ? parseInt(filterYearInput.value) : null;
             const monthFilter = filterMonthSelect.value !== "" ? parseInt(filterMonthSelect.value) : null;
 
+            // Определяем диапазон дат для календаря на основе фильтров
             if (yearFilter !== null && monthFilter !== null) {
+                // Если выбран конкретный месяц и год
                 minDate = new Date(yearFilter, monthFilter, 1);
-                maxDate = new Date(yearFilter, monthFilter + 1, 0);
-                daysOfMonthRow.style.display = 'flex';
+                maxDate = new Date(yearFilter, monthFilter + 1, 0); // Последний день месяца
+                daysOfMonthRow.style.display = 'flex'; // Показываем шкалу дней
             } else if (yearFilter !== null) {
+                // Если выбран только год
                 minDate = new Date(yearFilter, 0, 1);
                 maxDate = new Date(yearFilter, 11, 31);
             } else if (monthFilter !== null) {
+                 // Если выбран только месяц (для текущего года)
                  const currentYear = new Date().getFullYear();
                  minDate = new Date(currentYear, monthFilter, 1);
                  maxDate = new Date(currentYear, monthFilter + 1, 0);
-                 daysOfMonthRow.style.display = 'flex';
+                 daysOfMonthRow.style.display = 'flex'; // Показываем шкалу дней
             } else {
+                // Если фильтров нет, используем диапазон из данных или дефолтный
                 if (filteredVacations.length > 0) {
                      minDate = new Date(Math.min(...filteredVacations.map(v => new Date(v.start).getTime())));
                      maxDate = new Date(Math.max(...filteredVacations.map(v => new Date(v.end).getTime())));
@@ -714,6 +788,7 @@
 
             const dayWidthPercentage = 100 / totalDaysInRange;
 
+            // Рендер заголовков месяцев
             let currentMonthIterator = new Date(minDate);
             while (currentMonthIterator <= maxDate) {
                 const monthName = currentMonthIterator.toLocaleString('ru-RU', { month: 'long' });
@@ -739,23 +814,21 @@
                 currentMonthIterator.setDate(1);
             }
 
-            if (daysOfMonthRow.style.display === 'flex') {
-                // Determine the actual start and end day for the days-of-month row
-                // This will be the start day of minDate and end day of maxDate if a single month is selected
-                let startDay = minDate.getDate();
-                let endDay = maxDate.getDate();
-                let daysInSelectedMonth = dateDiffInDays(minDate, maxDate);
-
-
-                for (let i = 0; i < daysInSelectedMonth; i++) {
+            // Рендер шкалы дней, если выбран конкретный месяц или диапазон небольшой
+            if (daysOfMonthRow.style.display === 'flex' && totalDaysInRange <= 31) { // Ограничиваем показ дней до 31, чтобы не перегружать
+                let currentDayIterator = new Date(minDate);
+                for (let i = 0; i < totalDaysInRange; i++) {
                     const dayCell = document.createElement('div');
                     dayCell.classList.add('day-of-month-cell');
-                    dayCell.textContent = startDay + i;
+                    dayCell.textContent = currentDayIterator.getDate();
                     dayCell.style.width = `${dayWidthPercentage}%`;
                     daysOfMonthRow.appendChild(dayCell);
+                    currentDayIterator.setDate(currentDayIterator.getDate() + 1);
                 }
             }
 
+
+            // Группируем отпуска по имени/бригаде для отображения на временной шкале
             const vacationsByEntity = filteredVacations.reduce((acc, vacation) => {
                 const entityName = vacation.name;
                 if (!acc[entityName]) {
@@ -765,16 +838,17 @@
                 return acc;
             }, {});
 
+            // Сортируем сущности (сотрудников/бригады) для последовательного отображения
             const sortedEntities = Object.keys(vacationsByEntity).sort((a, b) => {
                 const isR_A = a.startsWith('Р') && a.length > 1 && !isNaN(parseInt(a.substring(1)));
                 const isR_B = b.startsWith('Р') && b.length > 1 && !isNaN(parseInt(b.substring(1)));
 
-                if (isR_A && isR_B) {
+                if (isR_A && isR_B) { // Если обе бригады, сортируем по номеру
                     return parseInt(a.substring(1)) - parseInt(b.substring(1));
                 }
-                if (isR_A) return 1;
+                if (isR_A) return 1; // Бригады идут после обычных имен
                 if (isR_B) return -1;
-                return a.localeCompare(b);
+                return a.localeCompare(b); // Обычная алфавитная сортировка для имен
             });
 
 
@@ -794,21 +868,22 @@
                     const vacStart = new Date(vacation.start);
                     const vacEnd = new Date(vacation.end);
 
+                    // Определяем видимый диапазон отпуска в рамках текущего отображения календаря
                     const displayStart = new Date(Math.max(vacStart.getTime(), minDate.getTime()));
                     const displayEnd = new Date(Math.min(vacEnd.getTime(), maxDate.getTime()));
 
-                    if (displayStart <= displayEnd) {
-                        const offsetDays = dateDiffInDays(minDate, displayStart) -1;
-                        const durationInView = dateDiffInDays(displayStart, displayEnd);
+                    if (displayStart <= displayEnd) { // Если отпуск хотя бы частично в диапазоне
+                        const offsetDays = dateDiffInDays(minDate, displayStart) -1; // Смещение от начала диапазона
+                        const durationInView = dateDiffInDays(displayStart, displayEnd); // Длительность в видимом диапазоне
 
                         const dayBlock = document.createElement('div');
                         dayBlock.classList.add('day-block');
                         if (vacation.type === 'brigade') {
-                            dayBlock.classList.add('brigade');
+                            dayBlock.classList.add('brigade'); // Изумрудный цвет для бригад
                         }
                         dayBlock.style.left = `${offsetDays * dayWidthPercentage}%`;
                         dayBlock.style.width = `${durationInView * dayWidthPercentage}%`;
-                        if (durationInView * dayWidthPercentage > 5) {
+                        if (durationInView * dayWidthPercentage > 5) { // Показываем текст, если достаточно места
                            dayBlock.textContent = `Отпуск`;
                         }
                         daysContainer.appendChild(dayBlock);
@@ -821,24 +896,29 @@
 
 
         // --- Обработчики форм и модальных окон ---
+        // Обработчик формы добавления отпуска
         form.addEventListener('submit', async function(event) {
             event.preventDefault();
-            formError.textContent = '';
+            formError.textContent = ''; // Очищаем ошибки
+            formError.classList.remove('text-red-500', 'text-orange-500'); // Очищаем цвета ошибок
 
             const entityType = entityTypeSelect.value;
             let name = '';
 
+            // Определяем имя/бригаду в зависимости от выбранного типа
             if (entityType === 'employee') {
                 name = officeEmployeeNameSelect.value;
             } else if (entityType === 'brigade') {
                 name = brigadeNameSelect.value;
             } else {
                 formError.textContent = 'Пожалуйста, выберите тип (Сотрудник офиса или Бригада цеха).';
+                formError.classList.add('text-red-500');
                 return;
             }
 
             if (!name) {
                  formError.textContent = `Пожалуйста, выберите ${entityType === 'employee' ? 'сотрудника' : 'бригаду'}.`;
+                 formError.classList.add('text-red-500');
                  return;
             }
 
@@ -847,6 +927,7 @@
 
             if (!start || !end) {
                 formError.textContent = 'Начало и конец отпуска обязательны для заполнения.';
+                formError.classList.add('text-red-500');
                 return;
             }
 
@@ -855,13 +936,15 @@
 
             if (endDate < startDate) {
                 formError.textContent = 'Дата окончания отпуска не может быть раньше даты начала.';
+                formError.classList.add('text-red-500');
                 return;
             }
             
+            // Вызов функции addVacationToFirestore, которая содержит логику проверки пересечений
             await addVacationToFirestore({ name, start, end, type: entityType });
         });
 
-        // Модальное окно подтверждения отпуска
+        // Модальное окно подтверждения удаления отпуска
         closeModalButton.onclick = () => confirmDeleteModal.style.display = 'none';
         cancelDeleteButton.onclick = () => confirmDeleteModal.style.display = 'none';
         confirmDeleteButtonAction.onclick = async function() {
@@ -871,7 +954,7 @@
             }
         };
 
-        // Модальное окно подтверждения сотрудника
+        // Модальное окно подтверждения удаления сотрудника
         closeEmployeeModalButton.onclick = () => confirmDeleteEmployeeModal.style.display = 'none';
         cancelDeleteEmployeeButton.onclick = () => confirmDeleteEmployeeModal.style.display = 'none';
         confirmDeleteEmployeeButtonAction.onclick = async function() {
@@ -892,7 +975,8 @@
         };
 
 
-        // --- Фильтры и экспорт PDF ---
+        // --- Фильтры и экспорт XLS ---
+        // Заполняет выпадающий список месяцев для фильтра
         function populateFilterOptions() {
             const currentMonthValue = filterMonthSelect.value;
             filterMonthSelect.innerHTML = '<option value="">Все месяцы</option>';
@@ -907,93 +991,94 @@
             filterMonthSelect.value = currentMonthValue;
         }
 
+        // Применяет фильтры и обновляет отображение
         function applyAllFilters() {
             const monthFilter = filterMonthSelect.value;
             const yearFilter = filterYearInput.value;
 
-            let filtered = vacations;
+            let filtered = vacations; // Начинаем со всех загруженных отпусков
 
             if (yearFilter) {
                 filtered = filtered.filter(v => {
                     const startYear = new Date(v.start).getFullYear();
                     const endYear = new Date(v.end).getFullYear();
+                    // Отпуск считается в году, если он начинается ИЛИ заканчивается в этом году
                     return startYear === parseInt(yearFilter) || endYear === parseInt(yearFilter);
                 });
             }
 
-            if (monthFilter !== "") {
+            if (monthFilter !== "") { // Если выбран конкретный месяц (0-11)
                 filtered = filtered.filter(v => {
                     const vacStart = new Date(v.start);
                     const vacEnd = new Date(v.end);
+                    // Определяем начало и конец месяца для фильтрации
                     const filterMonthDateStart = new Date(yearFilter || new Date().getFullYear(), parseInt(monthFilter), 1);
                     const filterMonthDateEnd = new Date(yearFilter || new Date().getFullYear(), parseInt(monthFilter) + 1, 0);
 
+                    // Отпуск попадает в месяц, если его интервал пересекается с интервалом месяца
                     return (vacStart <= filterMonthDateEnd && vacEnd >= filterMonthDateStart);
                 });
             }
-            renderVacations(filtered);
-            renderCalendarView(filtered);
+            renderVacations(filtered); // Рендерим таблицу
+            renderCalendarView(filtered); // Рендерим календарь
         }
 
         applyFiltersButton.addEventListener('click', applyAllFilters);
 
-        // Обработчик кнопки экспорта PDF, прикрепленный к window.onload
-        window.onload = function() {
-            exportPdfButton.addEventListener('click', () => {
-                const element = document.getElementById('content-to-export');
-                
-                // Клонируем элемент, чтобы применить стили для PDF
-                const clonedElement = element.cloneNode(true);
-                
-                // Удаляем элементы, которые не должны быть в PDF (например, формы управления)
-                const addOfficeEmployeeFormClone = clonedElement.querySelector('#addOfficeEmployeeForm');
-                if (addOfficeEmployeeFormClone) addOfficeEmployeeFormClone.remove();
+        // Обработчик кнопки экспорта в XLS
+        exportXlsButton.addEventListener('click', () => {
+            // Получаем данные, которые сейчас отображаются в таблице (отфильтрованные)
+            const dataToExport = vacations.filter(v => {
+                const monthFilter = filterMonthSelect.value;
+                const yearFilter = filterYearInput.value;
 
-                const addVacationFormClone = clonedElement.querySelector('#addVacationForm');
-                if (addVacationFormClone) addVacationFormClone.remove();
+                let matchesFilters = true;
 
-                const filterAndExportSection = clonedElement.querySelector('.mb-6.flex');
-                if (filterAndExportSection) filterAndExportSection.remove();
-
-                // Удаляем колонку "Действия" из таблицы (если она есть)
-                const tableHeaders = clonedElement.querySelectorAll('#vacationList').length > 0 ? clonedElement.querySelector('#vacationList').parentNode.querySelectorAll('thead th') : [];
-                const actionHeaderIndex = Array.from(tableHeaders).findIndex(th => th.textContent.includes('Действия'));
-                if (actionHeaderIndex !== -1) {
-                    tableHeaders[actionHeaderIndex].remove();
-                    clonedElement.querySelectorAll('#vacationList tr').forEach(row => {
-                        if (row.children[actionHeaderIndex]) {
-                            row.children[actionHeaderIndex].remove();
-                        }
-                    });
+                if (yearFilter) {
+                    const startYear = new Date(v.start).getFullYear();
+                    const endYear = new Date(v.end).getFullYear();
+                    matchesFilters = matchesFilters && (startYear === parseInt(yearFilter) || endYear === parseInt(yearFilter));
                 }
 
-                const options = {
-                    margin: [0.5, 0.5, 0.5, 0.5], // top, left, bottom, right
-                    filename: 'график_отпусков.pdf',
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: {
-                        scale: 2,
-                        logging: true,
-                        useCORS: true
-                    },
-                    jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
-                };
-
-                if (window.html2pdf) {
-                    window.html2pdf().set(options).from(clonedElement).save();
-                } else {
-                    alert('Ошибка: Библиотека html2pdf не загружена. Проверьте подключение к интернету или CDN-ссылку.');
-                    console.error('html2pdf is not defined on window.onload');
+                if (monthFilter !== "") {
+                    const vacStart = new Date(v.start);
+                    const vacEnd = new Date(v.end);
+                    const filterMonthDateStart = new Date(yearFilter || new Date().getFullYear(), parseInt(monthFilter), 1);
+                    const filterMonthDateEnd = new Date(yearFilter || new Date().getFullYear(), parseInt(monthFilter) + 1, 0);
+                    matchesFilters = matchesFilters && (vacStart <= filterMonthDateEnd && vacEnd >= filterMonthDateStart);
                 }
-            });
+                return matchesFilters;
+            }).map(v => ({
+                'Имя/Бригада': v.name,
+                'Тип': v.type === 'employee' ? 'Сотрудник' : 'Бригада',
+                'Начало отпуска': formatDate(v.start),
+                'Конец отпуска': formatDate(v.end),
+                'Длительность (дни)': dateDiffInDays(new Date(v.start), new Date(v.end))
+            }));
 
-            // Инициализация при загрузке страницы
+            if (dataToExport.length === 0) {
+                alert('Нет данных для экспорта с учетом текущих фильтров.');
+                return;
+            }
+
+            // Создаем рабочий лист из JSON данных
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            // Создаем рабочую книгу и добавляем лист
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "График отпусков");
+            // Записываем файл
+            XLSX.writeFile(wb, "график_отпусков.xls");
+        });
+
+
+        // Инициализация приложения при полной загрузке DOM
+        document.addEventListener('DOMContentLoaded', async () => {
             populateFilterOptions();
             const currentYear = new Date().getFullYear();
             filterYearInput.value = currentYear;
-            fetchOfficeEmployees();
-            fetchVacations();
-        };
+            await fetchOfficeEmployees(); // Загружаем сотрудников офиса
+            await fetchVacations(); // Загружаем отпуска
+        });
 
     </script>
 </body>
